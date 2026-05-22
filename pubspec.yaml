@@ -1,0 +1,54 @@
+name: jowi_care
+description: 雙貓健康管理 App — Joy & Wiki
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Backend
+  supabase_flutter: ^2.8.0
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.3.5
+
+  # Navigation
+  go_router: ^14.6.2
+
+  # Charts
+  fl_chart: ^0.70.0
+
+  # Push notifications (local, scheduled)
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
+
+  # Image picker
+  image_picker: ^1.1.2
+
+  # Fuzzy search (client-side re-rank)
+  fuzzy: ^0.5.1
+
+  # Intl / date formatting
+  intl: 0.20.2
+
+  # Environment variables
+  flutter_dotenv: ^5.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.13
+  riverpod_generator: ^2.4.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env

@@ -1,0 +1,24 @@
+# Environment variables
+.env
+.env.*
+
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+*.iml
+.idea/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Superpowers (cloned dependency)
+superpowers/

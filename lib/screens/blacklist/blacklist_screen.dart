@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fuzzy/fuzzy.dart';
 import '../../l10n/app_strings.dart';
 import '../../providers/locale_provider.dart';
+import '../../widgets/form_page.dart';
 
 // ── 資料模型 ──────────────────────────────────────────────────────
 class BlacklistItem {
@@ -125,13 +126,14 @@ class _BlacklistScreenState extends ConsumerState<BlacklistScreen> {
     return fuse.search(_query).map((r) => r.item).toList();
   }
 
-  void _showForm({BlacklistItem? item}) {
+  void _showForm({BlacklistItem? item}) async {
     final s = AppStrings.fromLocale(ref.read(localeProvider));
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _BlacklistForm(item: item, s: s),
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BlacklistFormPage(item: item, s: s,
+            notifier: ref.read(blacklistProvider.notifier)),
+      ),
     );
   }
 
@@ -305,17 +307,18 @@ class _BlacklistCard extends StatelessWidget {
   }
 }
 
-// ── 新增 / 編輯 表單（底部 Sheet） ───────────────────────────────
-class _BlacklistForm extends ConsumerStatefulWidget {
+// ── 黑名單表單頁（push route） ────────────────────────────────────
+class BlacklistFormPage extends StatefulWidget {
   final BlacklistItem? item;
   final AppStrings s;
-  const _BlacklistForm({this.item, required this.s});
+  final BlacklistNotifier notifier;
+  const BlacklistFormPage({super.key, this.item, required this.s, required this.notifier});
 
   @override
-  ConsumerState<_BlacklistForm> createState() => _BlacklistFormState();
+  State<BlacklistFormPage> createState() => _BlacklistFormPageState();
 }
 
-class _BlacklistFormState extends ConsumerState<_BlacklistForm> {
+class _BlacklistFormPageState extends State<BlacklistFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _brandCtrl;
   late final TextEditingController _nameCtrl;
@@ -348,19 +351,15 @@ class _BlacklistFormState extends ConsumerState<_BlacklistForm> {
         name: _nameCtrl.text.trim(),
         reason: _reasonCtrl.text.trim(),
       );
-      final notifier = ref.read(blacklistProvider.notifier);
       if (widget.item == null) {
-        await notifier.add(updated);
+        await widget.notifier.add(updated);
       } else {
-        await notifier.updateItem(updated);
+        await widget.notifier.updateItem(updated);
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
       setState(() => _saving = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
   }
 
@@ -368,101 +367,30 @@ class _BlacklistFormState extends ConsumerState<_BlacklistForm> {
   Widget build(BuildContext context) {
     final s = widget.s;
     final isEdit = widget.item != null;
-    return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: Form(
+    return FormPage(
+      title: isEdit ? s.blacklistEdit : s.blacklistAdd,
+      bottomButton: FormSaveButton(label: s.actionSave, onTap: _submit, loading: _saving),
+      children: [
+        Form(
           key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+          child: Column(children: [
+            FormSection(children: [
+              FormFieldRow(label: s.foodBrand, controller: _brandCtrl),
+              FormFieldRow(
+                label: s.foodName, controller: _nameCtrl, required: true,
+                validator: (v) => (v == null || v.trim().isEmpty) ? s.fieldRequired : null,
               ),
-              const SizedBox(height: 16),
-              Text(
-                isEdit ? s.blacklistEdit : s.blacklistAdd,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              _Field(controller: _brandCtrl, label: s.foodBrand),
-              const SizedBox(height: 12),
-              _Field(
-                controller: _nameCtrl,
-                label: s.foodName,
-                required: true,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? s.fieldRequired : null,
-              ),
-              const SizedBox(height: 12),
-              _Field(
-                controller: _reasonCtrl,
-                label: s.blacklistReason,
-                required: true,
+            ]),
+            FormSection(children: [
+              FormFieldRow(
+                label: s.blacklistReason, controller: _reasonCtrl, required: true,
                 maxLines: 3,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? s.fieldRequired : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? s.fieldRequired : null,
               ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _saving ? null : _submit,
-                child: _saving
-                    ? const SizedBox(
-                        width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(s.actionSave),
-              ),
-            ],
-          ),
+            ]),
+          ]),
         ),
-      ),
-    );
-  }
-}
-
-class _Field extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final bool required;
-  final int maxLines;
-  final String? Function(String?)? validator;
-
-  const _Field({
-    required this.controller,
-    required this.label,
-    this.required = false,
-    this.maxLines = 1,
-    this.validator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: required ? '$label *' : label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
+      ],
     );
   }
 }

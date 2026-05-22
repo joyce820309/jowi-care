@@ -5,6 +5,7 @@ import '../../l10n/app_strings.dart';
 import '../../providers/locale_provider.dart';
 import '../../widgets/pill_tab_bar.dart';
 import '../../widgets/refreshable_view.dart';
+import '../../widgets/form_page.dart';
 
 // ── 示意資料（初始值，可新增） ────────────────────────────────────
 final _joyRecordsInit = [
@@ -51,24 +52,21 @@ class _WeightScreenState extends ConsumerState<WeightScreen>
     super.dispose();
   }
 
-  void _showAddWeight(String catName) {
+  void _showAddWeight(String catName) async {
     final s = AppStrings.fromLocale(ref.read(localeProvider));
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _AddWeightSheet(
-        s: s,
-        catName: catName,
-        onSave: (date, kg) {
-          setState(() {
-            final list = catName == 'Joy' ? _joyRecords : _wikiRecords;
-            list.add((date, kg));
-            list.sort((a, b) => a.$1.compareTo(b.$1));
-          });
-        },
+    final result = await Navigator.push<(DateTime, double)>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WeightFormPage(s: s, catName: catName),
       ),
     );
+    if (result != null) {
+      setState(() {
+        final list = catName == 'Joy' ? _joyRecords : _wikiRecords;
+        list.add(result);
+        list.sort((a, b) => a.$1.compareTo(b.$1));
+      });
+    }
   }
 
   @override
@@ -601,25 +599,26 @@ class _WeightRow extends StatelessWidget {
   }
 }
 
-// ── 新增體重 bottom sheet ─────────────────────────────────────────
-class _AddWeightSheet extends StatefulWidget {
+// ── 新增體重表單頁（push route） ──────────────────────────────────
+class WeightFormPage extends StatefulWidget {
   final AppStrings s;
   final String catName;
-  final void Function(DateTime date, double kg) onSave;
-  const _AddWeightSheet({required this.s, required this.catName, required this.onSave});
+  const WeightFormPage({super.key, required this.s, required this.catName});
 
   @override
-  State<_AddWeightSheet> createState() => _AddWeightSheetState();
+  State<WeightFormPage> createState() => _WeightFormPageState();
 }
 
-class _AddWeightSheetState extends State<_AddWeightSheet> {
-  final _kgCtrl = TextEditingController();
+class _WeightFormPageState extends State<WeightFormPage> {
   final _formKey = GlobalKey<FormState>();
+  final _kgCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
   DateTime _date = DateTime.now();
 
   @override
   void dispose() {
     _kgCtrl.dispose();
+    _noteCtrl.dispose();
     super.dispose();
   }
 
@@ -640,91 +639,43 @@ class _AddWeightSheetState extends State<_AddWeightSheet> {
     if (!_formKey.currentState!.validate()) return;
     final kg = double.tryParse(_kgCtrl.text.trim());
     if (kg == null) return;
-    widget.onSave(_date, kg);
-    Navigator.pop(context);
+    Navigator.pop(context, (_date, kg));
   }
 
   @override
   Widget build(BuildContext context) {
     final s = widget.s;
-    final theme = Theme.of(context);
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: Form(
+    return FormPage(
+      title: '${s.weightAddTitle} · ${widget.catName}',
+      bottomButton: FormSaveButton(label: s.actionSave, onTap: _submit),
+      children: [
+        Form(
           key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text('${s.weightAddTitle} · ${widget.catName}',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              InkWell(
+          child: Column(children: [
+            FormSection(children: [
+              FormTapRow(
+                label: s.weightDate,
+                value: _fmt(_date),
                 onTap: _pickDate,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: theme.colorScheme.outline.withOpacity(0.4)),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(children: [
-                    Icon(Icons.calendar_today_outlined, size: 16, color: theme.colorScheme.primary),
-                    const SizedBox(width: 8),
-                    Text(s.weightDate, style: theme.textTheme.bodySmall),
-                    const Spacer(),
-                    Text(_fmt(_date),
-                        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
-                    const SizedBox(width: 4),
-                    Icon(Icons.chevron_right, size: 16,
-                        color: theme.colorScheme.onSurface.withOpacity(0.4)),
-                  ]),
-                ),
               ),
-              const SizedBox(height: 12),
-              TextFormField(
+            ]),
+            FormSection(children: [
+              FormFieldRow(
+                label: '${s.weightUnit} *',
                 controller: _kgCtrl,
+                hint: '0.00',
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: '${s.weightUnit} *',
-                  suffixText: 'kg',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  isDense: true,
-                ),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return s.fieldRequired;
                   if (double.tryParse(v.trim()) == null) return s.weightInvalidNumber;
                   return null;
                 },
               ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submit,
-                  child: Text(s.actionSave),
-                ),
-              ),
-            ],
-          ),
+              FormFieldRow(label: s.weightNote, controller: _noteCtrl),
+            ]),
+          ]),
         ),
-      ),
+      ],
     );
   }
 }

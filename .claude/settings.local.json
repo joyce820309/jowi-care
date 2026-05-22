@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Remove-Item \"c:\\\\Users\\\\Gigabyte\\\\jowi-care\\\\lib\\\\screens\\\\food\\\\blacklist_screen.dart\" -Confirm:$false)"
+      "PowerShell(Remove-Item \"c:\\\\Users\\\\Gigabyte\\\\jowi-care\\\\lib\\\\screens\\\\food\\\\blacklist_screen.dart\" -Confirm:$false)",
+      "PowerShell($env:Path += \";C:\\\\flutter\\\\bin\"; flutter analyze --no-pub 2>&1 | Select-Object -First 80)"
     ]
   }
 }

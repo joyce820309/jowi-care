@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_strings.dart';
 import '../../providers/locale_provider.dart';
+import '../../widgets/form_page.dart';
 
 // ── 資料模型 ──────────────────────────────────────────────────────
 class DryFoodItem {
@@ -19,18 +20,9 @@ class DryFoodItem {
   final String? note;
 
   const DryFoodItem({
-    required this.id,
-    required this.brand,
-    required this.name,
-    this.moisture,
-    this.protein,
-    this.fat,
-    this.carbs,
-    this.calcium,
-    this.phosphorus,
-    this.caloriesPer100g,
-    this.isOpened = false,
-    this.note,
+    required this.id, required this.brand, required this.name,
+    this.moisture, this.protein, this.fat, this.carbs, this.calcium,
+    this.phosphorus, this.caloriesPer100g, this.isOpened = false, this.note,
   });
 
   double? get proteinDM => (moisture != null && protein != null && moisture! < 100)
@@ -43,33 +35,24 @@ class DryFoodItem {
       ? calcium! / phosphorus! : null;
 
   DryFoodItem copyWith({bool? isOpened}) => DryFoodItem(
-    id: id, brand: brand, name: name, moisture: moisture,
-    protein: protein, fat: fat, carbs: carbs, calcium: calcium,
-    phosphorus: phosphorus, caloriesPer100g: caloriesPer100g,
-    isOpened: isOpened ?? this.isOpened, note: note,
+    id: id, brand: brand, name: name, moisture: moisture, protein: protein,
+    fat: fat, carbs: carbs, calcium: calcium, phosphorus: phosphorus,
+    caloriesPer100g: caloriesPer100g, isOpened: isOpened ?? this.isOpened, note: note,
   );
 }
 
-// ── 示意資料 ──────────────────────────────────────────────────────
 final _demoDryFoods = [
-  DryFoodItem(
-    id: '1', brand: 'Royal Canin', name: '室內成貓 2kg',
-    moisture: 8, protein: 31, fat: 14, carbs: 32,
-    caloriesPer100g: 370, isOpened: true,
-  ),
-  DryFoodItem(
-    id: '2', brand: 'Hills', name: '完美消化雞肉 1.6kg',
-    moisture: 9, protein: 28, fat: 13, carbs: 34,
-    caloriesPer100g: 355, isOpened: false,
-  ),
-  DryFoodItem(
-    id: '3', brand: 'Orijen', name: '六種魚配方 1.8kg',
-    moisture: 10, protein: 40, fat: 20, carbs: 18,
-    caloriesPer100g: 390, isOpened: false,
-  ),
+  DryFoodItem(id: '1', brand: 'Royal Canin', name: '室內成貓 2kg',
+      moisture: 8, protein: 31, fat: 14, carbs: 32, caloriesPer100g: 370, isOpened: true),
+  DryFoodItem(id: '2', brand: 'Hills', name: '完美消化雞肉 1.6kg',
+      moisture: 9, protein: 28, fat: 13, carbs: 34, caloriesPer100g: 355),
+  DryFoodItem(id: '3', brand: 'Orijen', name: '六種魚配方 1.8kg',
+      moisture: 10, protein: 40, fat: 20, carbs: 18, caloriesPer100g: 390),
 ];
 
-// ── Screen ────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// DryFoodScreen
+// ══════════════════════════════════════════════════════════════════
 class DryFoodScreen extends ConsumerStatefulWidget {
   const DryFoodScreen({super.key});
 
@@ -91,31 +74,22 @@ class _DryFoodScreenState extends ConsumerState<DryFoodScreen> {
     });
   }
 
-  void _showDetail(AppStrings s, DryFoodItem item) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _DryFoodDetailSheet(item: item, s: s),
-    );
+  void _goDetail(AppStrings s, DryFoodItem item) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => DryFoodDetailPage(item: item, s: s)));
   }
 
-  void _showAddFood(AppStrings s) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _AddDryFoodSheet(
-        s: s,
-        onSave: (item) => setState(() => _foods.insert(0, item)),
-      ),
+  void _goAdd(AppStrings s) async {
+    final result = await Navigator.push<DryFoodItem>(
+      context,
+      MaterialPageRoute(builder: (_) => DryFoodFormPage(s: s)),
     );
+    if (result != null) setState(() => _foods.insert(0, result));
   }
 
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.fromLocale(ref.watch(localeProvider));
-
     return Stack(
       children: [
         RefreshIndicator(
@@ -125,7 +99,7 @@ class _DryFoodScreenState extends ConsumerState<DryFoodScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
             children: _foods.map((item) => _DryFoodCard(
               item: item, s: s,
-              onTap: () => _showDetail(s, item),
+              onTap: () => _goDetail(s, item),
               onToggleOpened: () => _toggleOpened(item.id),
             )).toList(),
           ),
@@ -134,7 +108,7 @@ class _DryFoodScreenState extends ConsumerState<DryFoodScreen> {
           right: 20, bottom: 20,
           child: FloatingActionButton(
             heroTag: 'dry_food_fab',
-            onPressed: () => _showAddFood(s),
+            onPressed: () => _goAdd(s),
             child: const Icon(Icons.add),
           ),
         ),
@@ -143,16 +117,13 @@ class _DryFoodScreenState extends ConsumerState<DryFoodScreen> {
   }
 }
 
-// ── 飼料卡片 ──────────────────────────────────────────────────────
+// ── 飼料清單卡片 ──────────────────────────────────────────────────
 class _DryFoodCard extends StatelessWidget {
   final DryFoodItem item;
   final AppStrings s;
   final VoidCallback onTap;
   final VoidCallback onToggleOpened;
-  const _DryFoodCard({
-    required this.item, required this.s,
-    required this.onTap, required this.onToggleOpened,
-  });
+  const _DryFoodCard({required this.item, required this.s, required this.onTap, required this.onToggleOpened});
 
   @override
   Widget build(BuildContext context) {
@@ -161,40 +132,28 @@ class _DryFoodCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Expanded(
-                  child: Text(item.name,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
-                ),
-                GestureDetector(
-                  onTap: onToggleOpened,
-                  child: _OpenedBadge(isOpened: item.isOpened, s: s),
-                ),
-              ]),
-              const SizedBox(height: 4),
-              Text(item.brand, style: theme.textTheme.bodySmall),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8, runSpacing: 4,
-                children: [
-                  if (item.caloriesPer100g != null)
-                    _Chip('${s.foodCalories.split(' ')[0]}: ${item.caloriesPer100g!.toStringAsFixed(0)} kcal'),
-                  if (item.protein != null)
-                    _Chip('${s.foodProtein}: ${item.protein!.toStringAsFixed(0)}%'),
-                  if (item.fat != null)
-                    _Chip('${s.foodFat}: ${item.fat!.toStringAsFixed(0)}%'),
-                  if (item.moisture != null)
-                    _Chip('${s.foodMoisture}: ${item.moisture!.toStringAsFixed(0)}%'),
-                ],
-              ),
-            ],
-          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w600))),
+              GestureDetector(onTap: onToggleOpened, child: _OpenedBadge(isOpened: item.isOpened, s: s)),
+            ]),
+            const SizedBox(height: 4),
+            Text(item.brand, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 4, children: [
+              if (item.caloriesPer100g != null)
+                _Chip('${s.foodCalories.split(' ')[0]}: ${item.caloriesPer100g!.toStringAsFixed(0)} kcal'),
+              if (item.protein != null)
+                _Chip('${s.foodProtein}: ${item.protein!.toStringAsFixed(0)}%'),
+              if (item.fat != null)
+                _Chip('${s.foodFat}: ${item.fat!.toStringAsFixed(0)}%'),
+              if (item.moisture != null)
+                _Chip('${s.foodMoisture}: ${item.moisture!.toStringAsFixed(0)}%'),
+            ]),
+          ]),
         ),
       ),
     );
@@ -208,13 +167,12 @@ class _OpenedBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isOpened ? const Color(0xFF81C784) : Theme.of(context).colorScheme.onSurface.withOpacity(0.35);
+    final color = isOpened
+        ? const Color(0xFF81C784)
+        : Theme.of(context).colorScheme.onSurface.withOpacity(0.35);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(isOpened ? Icons.lock_open_outlined : Icons.lock_outline, size: 12, color: color),
         const SizedBox(width: 3),
@@ -225,119 +183,67 @@ class _OpenedBadge extends StatelessWidget {
   }
 }
 
-// ── 飼料詳情 bottom sheet ─────────────────────────────────────────
-class _DryFoodDetailSheet extends StatelessWidget {
+// ══════════════════════════════════════════════════════════════════
+// 飼料詳情頁（push route）
+// ══════════════════════════════════════════════════════════════════
+class DryFoodDetailPage extends StatelessWidget {
   final DryFoodItem item;
   final AppStrings s;
-  const _DryFoodDetailSheet({required this.item, required this.s});
+  const DryFoodDetailPage({super.key, required this.item, required this.s});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(item.name,
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            Text(item.brand, style: theme.textTheme.bodySmall),
-            const SizedBox(height: 20),
-            _DetailSection(title: s.foodNutritionRaw, rows: [
-              if (item.caloriesPer100g != null) _NutRow(s.foodCalories, '${item.caloriesPer100g!.toStringAsFixed(0)} kcal'),
-              if (item.moisture != null) _NutRow(s.foodMoisture, '${item.moisture!.toStringAsFixed(1)}%'),
-              if (item.protein != null) _NutRow(s.foodProtein, '${item.protein!.toStringAsFixed(1)}%'),
-              if (item.fat != null) _NutRow(s.foodFat, '${item.fat!.toStringAsFixed(1)}%'),
-              if (item.carbs != null) _NutRow(s.foodCarbs, '${item.carbs!.toStringAsFixed(1)}%'),
-            ]),
-            if (item.proteinDM != null || item.caPRatio != null) ...[
-              const SizedBox(height: 12),
-              _DetailSection(title: s.foodNutritionDM, rows: [
-                if (item.proteinDM != null) _NutRow('${s.foodProtein} DM', '${item.proteinDM!.toStringAsFixed(1)}%'),
-                if (item.fatDM != null) _NutRow('${s.foodFat} DM', '${item.fatDM!.toStringAsFixed(1)}%'),
-                if (item.carbsDM != null) _NutRow('${s.foodCarbs} DM', '${item.carbsDM!.toStringAsFixed(1)}%'),
-                if (item.caPRatio != null) _NutRow(s.foodCaP, item.caPRatio!.toStringAsFixed(2)),
-              ]),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DetailSection extends StatelessWidget {
-  final String title;
-  final List<_NutRow> rows;
-  const _DetailSection({required this.title, required this.rows});
-
-  @override
-  Widget build(BuildContext context) {
-    if (rows.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return FormPage(
+      title: item.name,
       children: [
-        Text(title,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Column(children: rows),
-        ),
+        FormSection(title: s.foodNutritionRaw, children: [
+          if (item.caloriesPer100g != null) _NutTile(s.foodCalories, '${item.caloriesPer100g!.toStringAsFixed(0)} kcal'),
+          if (item.moisture != null) _NutTile(s.foodMoisture, '${item.moisture!.toStringAsFixed(1)}%'),
+          if (item.protein != null) _NutTile(s.foodProtein, '${item.protein!.toStringAsFixed(1)}%'),
+          if (item.fat != null) _NutTile(s.foodFat, '${item.fat!.toStringAsFixed(1)}%'),
+          if (item.carbs != null) _NutTile(s.foodCarbs, '${item.carbs!.toStringAsFixed(1)}%'),
+        ]),
+        if (item.proteinDM != null || item.caPRatio != null)
+          FormSection(title: s.foodNutritionDM, children: [
+            if (item.proteinDM != null) _NutTile('${s.foodProtein} DM', '${item.proteinDM!.toStringAsFixed(1)}%'),
+            if (item.fatDM != null) _NutTile('${s.foodFat} DM', '${item.fatDM!.toStringAsFixed(1)}%'),
+            if (item.carbsDM != null) _NutTile('${s.foodCarbs} DM', '${item.carbsDM!.toStringAsFixed(1)}%'),
+            if (item.caPRatio != null) _NutTile(s.foodCaP, item.caPRatio!.toStringAsFixed(2)),
+          ]),
       ],
     );
   }
 }
 
-class _NutRow extends StatelessWidget {
+class _NutTile extends StatelessWidget {
   final String label;
   final String value;
-  const _NutRow(this.label, this.value);
+  const _NutTile(this.label, this.value);
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(children: [
-        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
       ]),
     );
   }
 }
 
-// ── 新增飼料 bottom sheet ─────────────────────────────────────────
-class _AddDryFoodSheet extends StatefulWidget {
+// ══════════════════════════════════════════════════════════════════
+// 新增飼料表單頁（push route）
+// ══════════════════════════════════════════════════════════════════
+class DryFoodFormPage extends StatefulWidget {
   final AppStrings s;
-  final void Function(DryFoodItem) onSave;
-  const _AddDryFoodSheet({required this.s, required this.onSave});
+  const DryFoodFormPage({super.key, required this.s});
 
   @override
-  State<_AddDryFoodSheet> createState() => _AddDryFoodSheetState();
+  State<DryFoodFormPage> createState() => _DryFoodFormPageState();
 }
 
-class _AddDryFoodSheetState extends State<_AddDryFoodSheet> {
+class _DryFoodFormPageState extends State<DryFoodFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _brandCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
@@ -361,7 +267,7 @@ class _AddDryFoodSheetState extends State<_AddDryFoodSheet> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    widget.onSave(DryFoodItem(
+    Navigator.pop(context, DryFoodItem(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       brand: _brandCtrl.text.trim(),
       name: _nameCtrl.text.trim(),
@@ -374,122 +280,58 @@ class _AddDryFoodSheetState extends State<_AddDryFoodSheet> {
       caloriesPer100g: double.tryParse(_calCtrl.text),
       isOpened: _isOpened,
     ));
-    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final s = widget.s;
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+    return FormPage(
+      title: s.foodAddDry,
+      bottomButton: FormSaveButton(label: s.actionSave, onTap: _submit),
+      children: [
+        Form(
+          key: _formKey,
+          child: Column(children: [
+            FormSection(children: [
+              FormFieldRow(label: s.foodBrand, controller: _brandCtrl),
+              FormFieldRow(
+                label: s.foodName, controller: _nameCtrl, required: true,
+                validator: (v) => (v == null || v.trim().isEmpty) ? s.fieldRequired : null,
+              ),
+            ]),
+            FormSection(title: s.foodNutritionRaw, children: [
+              _NumRow(ctrl: _moistureCtrl, label: '${s.foodMoisture} (%)'),
+              _NumRow(ctrl: _calCtrl, label: 'kcal / 100g'),
+              _NumRow(ctrl: _proteinCtrl, label: '${s.foodProtein} (%)'),
+              _NumRow(ctrl: _fatCtrl, label: '${s.foodFat} (%)'),
+              _NumRow(ctrl: _carbsCtrl, label: '${s.foodCarbs} (%)'),
+              _NumRow(ctrl: _caCtrl, label: '鈣 Ca (%)'),
+              _NumRow(ctrl: _pCtrl, label: '磷 P (%)'),
+            ]),
+            FormSection(children: [
+              FormSwitchRow(
+                label: s.dryFoodOpenedLabel,
+                value: _isOpened,
+                onChanged: (v) => setState(() => _isOpened = v),
+              ),
+            ]),
+          ]),
         ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40, height: 4,
-                    decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(2)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(s.foodAddDry,
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                _TF(ctrl: _brandCtrl, label: s.foodBrand),
-                const SizedBox(height: 10),
-                _TF(ctrl: _nameCtrl, label: s.foodName, required: true,
-                    validator: (v) => (v == null || v.trim().isEmpty) ? s.fieldRequired : null),
-                const SizedBox(height: 12),
-                Text(s.foodNutritionRaw,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: _TF(ctrl: _moistureCtrl, label: '${s.foodMoisture} %', numeric: true)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _TF(ctrl: _calCtrl, label: 'kcal/100g', numeric: true)),
-                ]),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: _TF(ctrl: _proteinCtrl, label: '${s.foodProtein} %', numeric: true)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _TF(ctrl: _fatCtrl, label: '${s.foodFat} %', numeric: true)),
-                ]),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: _TF(ctrl: _carbsCtrl, label: '${s.foodCarbs} %', numeric: true)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _TF(ctrl: _caCtrl, label: '鈣 Ca %', numeric: true)),
-                ]),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: _TF(ctrl: _pCtrl, label: '磷 P %', numeric: true)),
-                  const SizedBox(width: 8),
-                  const Expanded(child: SizedBox()),
-                ]),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Text(s.dryFoodOpenedLabel, style: theme.textTheme.bodyMedium),
-                    const Spacer(),
-                    Switch(
-                      value: _isOpened,
-                      onChanged: (v) => setState(() => _isOpened = v),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(onPressed: _submit, child: Text(s.actionSave)),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      ],
     );
   }
 }
 
-class _TF extends StatelessWidget {
+class _NumRow extends StatelessWidget {
   final TextEditingController ctrl;
   final String label;
-  final bool required;
-  final bool numeric;
-  final String? Function(String?)? validator;
-  const _TF({
-    required this.ctrl, required this.label,
-    this.required = false, this.numeric = false, this.validator,
-  });
+  const _NumRow({required this.ctrl, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: ctrl,
-      keyboardType: numeric ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: required ? '$label *' : label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        isDense: true,
-      ),
+    return FormFieldRow(
+      controller: ctrl, label: label,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
     );
   }
 }

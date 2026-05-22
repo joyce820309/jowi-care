@@ -149,6 +149,11 @@ class AppStrings {
   String get reminderSubtitle => _isChinese ? '說明（選填）' : 'Description (optional)';
   String get reminderDisable => _isChinese ? '停用提醒' : 'Disable';
   String get reminderEnable => _isChinese ? '啟用提醒' : 'Enable';
+  String get reminderTypeLabel => _isChinese ? '提醒類型' : 'Type';
+
+  // Medical meds
+  String get medicalMedsList => _isChinese ? '用藥清單' : 'Medications';
+  String get medicalMedsHint => _isChinese ? '輸入藥名後點 +' : 'Enter drug name, tap +';
 
   // Common actions
   String get actionAdd => _isChinese ? '新增' : 'Add';

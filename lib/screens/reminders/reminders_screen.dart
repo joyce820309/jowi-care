@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_strings.dart';
 import '../../providers/locale_provider.dart';
+import '../../widgets/form_page.dart';
 
 // ── 資料模型 ──────────────────────────────────────────────────────
 class _ReminderItem {
@@ -84,20 +85,17 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
     );
   }
 
-  void _showAddReminder(AppStrings s) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _AddReminderSheet(s: s,
-          onSave: (item) => setState(() => _items.add(item))),
+  void _showAddReminder(AppStrings s) async {
+    final result = await Navigator.push<_ReminderItem>(
+      context,
+      MaterialPageRoute(builder: (_) => ReminderFormPage(s: s)),
     );
+    if (result != null) setState(() => _items.add(result));
   }
 
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.fromLocale(ref.watch(localeProvider));
-    final theme = Theme.of(context);
 
     final active = _items.where((e) => e.isActive).toList();
     final inactive = _items.where((e) => !e.isActive).toList();
@@ -309,17 +307,16 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-// ── 新增提醒 bottom sheet ─────────────────────────────────────────
-class _AddReminderSheet extends StatefulWidget {
+// ── 新增提醒表單頁（push route） ──────────────────────────────────
+class ReminderFormPage extends StatefulWidget {
   final AppStrings s;
-  final void Function(_ReminderItem) onSave;
-  const _AddReminderSheet({required this.s, required this.onSave});
+  const ReminderFormPage({super.key, required this.s});
 
   @override
-  State<_AddReminderSheet> createState() => _AddReminderSheetState();
+  State<ReminderFormPage> createState() => _ReminderFormPageState();
 }
 
-class _AddReminderSheetState extends State<_AddReminderSheet> {
+class _ReminderFormPageState extends State<ReminderFormPage> {
   final _titleCtrl = TextEditingController();
   final _subtitleCtrl = TextEditingController();
   _ReminderType _type = _ReminderType.custom;
@@ -345,19 +342,6 @@ class _AddReminderSheetState extends State<_AddReminderSheet> {
     if (picked != null) setState(() => _nextDate = picked);
   }
 
-  void _submit() {
-    if (_titleCtrl.text.trim().isEmpty) return;
-    widget.onSave(_ReminderItem(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: _titleCtrl.text.trim(),
-      subtitle: _subtitleCtrl.text.trim().isEmpty ? null : _subtitleCtrl.text.trim(),
-      type: _type,
-      nextRemind: _nextDate != null ? _fmt(_nextDate!) : null,
-      isActive: true,
-    ));
-    Navigator.pop(context);
-  }
-
   static const _typeLabels = {
     _ReminderType.water: '換水',
     _ReminderType.filter: '濾芯/清洗',
@@ -374,107 +358,60 @@ class _AddReminderSheetState extends State<_AddReminderSheet> {
     _ReminderType.custom: Icons.alarm_outlined,
   };
 
+  void _submit() {
+    if (_titleCtrl.text.trim().isEmpty) return;
+    Navigator.pop(context, _ReminderItem(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: _titleCtrl.text.trim(),
+      subtitle: _subtitleCtrl.text.trim().isEmpty ? null : _subtitleCtrl.text.trim(),
+      type: _type,
+      nextRemind: _nextDate != null ? _fmt(_nextDate!) : null,
+      isActive: true,
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = widget.s;
     final theme = Theme.of(context);
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(s.reminderAdd,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              // 類型選擇
-              Wrap(
-                spacing: 8, runSpacing: 8,
-                children: _ReminderType.values.map((type) {
-                  final selected = _type == type;
-                  return ChoiceChip(
-                    avatar: Icon(_typeIcons[type], size: 16),
-                    label: Text(_typeLabels[type]!),
-                    selected: selected,
-                    onSelected: (_) => setState(() => _type = type),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _titleCtrl,
-                decoration: InputDecoration(
-                  labelText: '${s.reminderTitle} *',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  isDense: true,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _subtitleCtrl,
-                decoration: InputDecoration(
-                  labelText: s.reminderSubtitle,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  isDense: true,
-                ),
-              ),
-              const SizedBox(height: 12),
-              InkWell(
-                onTap: _pickDate,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: theme.colorScheme.outline.withOpacity(0.4)),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(children: [
-                    Icon(Icons.calendar_today_outlined, size: 16, color: theme.colorScheme.primary),
-                    const SizedBox(width: 8),
-                    Text(s.reminderNext, style: theme.textTheme.bodySmall),
-                    const Spacer(),
-                    Text(
-                      _nextDate != null ? _fmt(_nextDate!) : s.medicalNotSet,
-                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.chevron_right, size: 16,
-                        color: theme.colorScheme.onSurface.withOpacity(0.4)),
-                  ]),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submit,
-                  child: Text(s.actionSave),
-                ),
-              ),
-            ],
+    return FormPage(
+      title: s.reminderAdd,
+      bottomButton: FormSaveButton(label: s.actionSave, onTap: _submit),
+      children: [
+        // 類型選擇（ChoiceChip 橫排）
+        FormSection(title: s.reminderTypeLabel, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            child: Wrap(
+              spacing: 8, runSpacing: 8,
+              children: _ReminderType.values.map((type) {
+                final selected = _type == type;
+                return ChoiceChip(
+                  avatar: Icon(_typeIcons[type]!, size: 16,
+                      color: selected ? theme.colorScheme.onPrimary : null),
+                  label: Text(_typeLabels[type]!),
+                  selected: selected,
+                  onSelected: (_) => setState(() => _type = type),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                );
+              }).toList(),
+            ),
           ),
-        ),
-      ),
+        ]),
+        // 標題與說明
+        FormSection(children: [
+          FormFieldRow(label: '${s.reminderTitle} *', controller: _titleCtrl),
+          FormFieldRow(label: s.reminderSubtitle, controller: _subtitleCtrl),
+        ]),
+        // 下次提醒日
+        FormSection(children: [
+          FormTapRow(
+            label: s.reminderNext,
+            value: _nextDate != null ? _fmt(_nextDate!) : s.medicalNotSet,
+            onTap: _pickDate,
+          ),
+        ]),
+      ],
     );
   }
 }

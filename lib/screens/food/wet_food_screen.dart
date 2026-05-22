@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_strings.dart';
 import '../../providers/locale_provider.dart';
+import '../../widgets/form_page.dart';
 
 // ── 資料模型 ──────────────────────────────────────────────────────
 class WetFoodItem {
@@ -9,30 +10,20 @@ class WetFoodItem {
   final String brand;
   final String name;
   final String flavor;
-  final double? moisture;   // %
-  final double? protein;    // %
-  final double? fat;        // %
-  final double? carbs;      // %
-  final double? calcium;    // %
-  final double? phosphorus; // %
+  final double? moisture;
+  final double? protein;
+  final double? fat;
+  final double? carbs;
+  final double? calcium;
+  final double? phosphorus;
   final double? caloriesPer100g;
-  final String preference;  // 'love' | 'like' | 'neutral' | 'dislike'
+  final String preference;
   final String? note;
 
   const WetFoodItem({
-    required this.id,
-    required this.brand,
-    required this.name,
-    required this.flavor,
-    this.moisture,
-    this.protein,
-    this.fat,
-    this.carbs,
-    this.calcium,
-    this.phosphorus,
-    this.caloriesPer100g,
-    required this.preference,
-    this.note,
+    required this.id, required this.brand, required this.name, required this.flavor,
+    this.moisture, this.protein, this.fat, this.carbs, this.calcium, this.phosphorus,
+    this.caloriesPer100g, required this.preference, this.note,
   });
 
   double? get proteinDM => (moisture != null && protein != null && moisture! < 100)
@@ -45,26 +36,21 @@ class WetFoodItem {
       ? calcium! / phosphorus! : null;
 }
 
-// ── 示意資料 ──────────────────────────────────────────────────────
 final _demoWetFoods = [
-  WetFoodItem(
-    id: '1', brand: 'Sheba', name: '嫩嫩雞肉凍 85g', flavor: '雞肉',
-    moisture: 82, protein: 8.5, fat: 3.2, carbs: 0.5, calcium: 0.12, phosphorus: 0.09,
-    caloriesPer100g: 78, preference: 'love',
-  ),
-  WetFoodItem(
-    id: '2', brand: 'Fancy Feast', name: '經典嫩雞肉 85g', flavor: '雞肉',
-    moisture: 78, protein: 10.2, fat: 4.1, carbs: 1.2, calcium: 0.15, phosphorus: 0.11,
-    caloriesPer100g: 92, preference: 'like',
-  ),
-  WetFoodItem(
-    id: '3', brand: 'Wellness', name: '主食罐鮭魚 156g', flavor: '鮭魚',
-    moisture: 75, protein: 11.5, fat: 4.8, carbs: 1.5, calcium: 0.18, phosphorus: 0.14,
-    caloriesPer100g: 105, preference: 'neutral',
-  ),
+  WetFoodItem(id: '1', brand: 'Sheba', name: '嫩嫩雞肉凍 85g', flavor: '雞肉',
+      moisture: 82, protein: 8.5, fat: 3.2, carbs: 0.5, calcium: 0.12, phosphorus: 0.09,
+      caloriesPer100g: 78, preference: 'love'),
+  WetFoodItem(id: '2', brand: 'Fancy Feast', name: '經典嫩雞肉 85g', flavor: '雞肉',
+      moisture: 78, protein: 10.2, fat: 4.1, carbs: 1.2, calcium: 0.15, phosphorus: 0.11,
+      caloriesPer100g: 92, preference: 'like'),
+  WetFoodItem(id: '3', brand: 'Wellness', name: '主食罐鮭魚 156g', flavor: '鮭魚',
+      moisture: 75, protein: 11.5, fat: 4.8, carbs: 1.5, calcium: 0.18, phosphorus: 0.14,
+      caloriesPer100g: 105, preference: 'neutral'),
 ];
 
-// ── Screen ────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// WetFoodScreen
+// ══════════════════════════════════════════════════════════════════
 class WetFoodScreen extends ConsumerStatefulWidget {
   const WetFoodScreen({super.key});
 
@@ -79,31 +65,22 @@ class _WetFoodScreenState extends ConsumerState<WetFoodScreen> {
     await Future.delayed(const Duration(milliseconds: 800));
   }
 
-  void _showDetail(AppStrings s, WetFoodItem item) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _FoodDetailSheet(item: item, s: s),
-    );
+  void _goDetail(AppStrings s, WetFoodItem item) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => WetFoodDetailPage(item: item, s: s)));
   }
 
-  void _showAddFood(AppStrings s) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _AddWetFoodSheet(
-        s: s,
-        onSave: (item) => setState(() => _foods.insert(0, item)),
-      ),
+  void _goAdd(AppStrings s) async {
+    final result = await Navigator.push<WetFoodItem>(
+      context,
+      MaterialPageRoute(builder: (_) => WetFoodFormPage(s: s)),
     );
+    if (result != null) setState(() => _foods.insert(0, result));
   }
 
   @override
-  Widget build(BuildContext context, ) {
+  Widget build(BuildContext context) {
     final s = AppStrings.fromLocale(ref.watch(localeProvider));
-
     return Stack(
       children: [
         RefreshIndicator(
@@ -112,8 +89,7 @@ class _WetFoodScreenState extends ConsumerState<WetFoodScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
             children: _foods.map((item) => _WetFoodCard(
-              item: item, s: s,
-              onTap: () => _showDetail(s, item),
+              item: item, s: s, onTap: () => _goDetail(s, item),
             )).toList(),
           ),
         ),
@@ -121,7 +97,7 @@ class _WetFoodScreenState extends ConsumerState<WetFoodScreen> {
           right: 20, bottom: 20,
           child: FloatingActionButton(
             heroTag: 'wet_food_fab',
-            onPressed: () => _showAddFood(s),
+            onPressed: () => _goAdd(s),
             child: const Icon(Icons.add),
           ),
         ),
@@ -130,7 +106,7 @@ class _WetFoodScreenState extends ConsumerState<WetFoodScreen> {
   }
 }
 
-// ── 食物卡片 ──────────────────────────────────────────────────────
+// ── 食物清單卡片 ──────────────────────────────────────────────────
 class _WetFoodCard extends StatelessWidget {
   final WetFoodItem item;
   final AppStrings s;
@@ -138,51 +114,39 @@ class _WetFoodCard extends StatelessWidget {
   const _WetFoodCard({required this.item, required this.s, required this.onTap});
 
   static const _prefColors = {
-    'love': Color(0xFFE57373),
-    'like': Color(0xFF81C784),
-    'neutral': Color(0xFFFFB74D),
-    'dislike': Color(0xFF90A4AE),
+    'love': Color(0xFFE57373), 'like': Color(0xFF81C784),
+    'neutral': Color(0xFFFFB74D), 'dislike': Color(0xFF90A4AE),
   };
 
   @override
   Widget build(BuildContext context) {
     final prefColor = _prefColors[item.preference] ?? Theme.of(context).colorScheme.primary;
     final prefLabel = _prefLabel(item.preference, s);
-
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Expanded(
-                  child: Text(item.name,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
-                ),
-                _PrefBadge(label: prefLabel, color: prefColor),
-              ]),
-              const SizedBox(height: 4),
-              Text('${item.brand} · ${s.foodFlavor}: ${item.flavor}',
-                  style: Theme.of(context).textTheme.bodySmall),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8, runSpacing: 4,
-                children: [
-                  if (item.caloriesPer100g != null)
-                    _Chip('${s.foodCalories.split(' ')[0]}: ${item.caloriesPer100g!.toStringAsFixed(0)} kcal'),
-                  if (item.caPRatio != null)
-                    _Chip('${s.foodCaP}: ${item.caPRatio!.toStringAsFixed(2)}'),
-                  if (item.moisture != null)
-                    _Chip('${s.foodMoisture}: ${item.moisture!.toStringAsFixed(0)}%'),
-                ],
-              ),
-            ],
-          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w600))),
+              _PrefBadge(label: prefLabel, color: prefColor),
+            ]),
+            const SizedBox(height: 4),
+            Text('${item.brand} · ${s.foodFlavor}: ${item.flavor}',
+                style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 4, children: [
+              if (item.caloriesPer100g != null)
+                _Chip('${s.foodCalories.split(' ')[0]}: ${item.caloriesPer100g!.toStringAsFixed(0)} kcal'),
+              if (item.caPRatio != null)
+                _Chip('${s.foodCaP}: ${item.caPRatio!.toStringAsFixed(2)}'),
+              if (item.moisture != null)
+                _Chip('${s.foodMoisture}: ${item.moisture!.toStringAsFixed(0)}%'),
+            ]),
+          ]),
         ),
       ),
     );
@@ -198,130 +162,75 @@ class _WetFoodCard extends StatelessWidget {
   }
 }
 
-// ── 食物詳情 bottom sheet ─────────────────────────────────────────
-class _FoodDetailSheet extends StatelessWidget {
+// ══════════════════════════════════════════════════════════════════
+// 食物詳情頁（push route）
+// ══════════════════════════════════════════════════════════════════
+class WetFoodDetailPage extends StatelessWidget {
   final WetFoodItem item;
   final AppStrings s;
-  const _FoodDetailSheet({required this.item, required this.s});
+  const WetFoodDetailPage({super.key, required this.item, required this.s});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(item.name,
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            Text('${item.brand} · ${s.foodFlavor}: ${item.flavor}',
-                style: theme.textTheme.bodySmall),
-            const SizedBox(height: 20),
-            // 基礎成分
-            _DetailSection(title: s.foodNutritionRaw, rows: [
-              if (item.caloriesPer100g != null) _NutRow(s.foodCalories, '${item.caloriesPer100g!.toStringAsFixed(0)} kcal'),
-              if (item.moisture != null) _NutRow(s.foodMoisture, '${item.moisture!.toStringAsFixed(1)}%'),
-              if (item.protein != null) _NutRow(s.foodProtein, '${item.protein!.toStringAsFixed(1)}%'),
-              if (item.fat != null) _NutRow(s.foodFat, '${item.fat!.toStringAsFixed(1)}%'),
-              if (item.carbs != null) _NutRow(s.foodCarbs, '${item.carbs!.toStringAsFixed(1)}%'),
-            ]),
-            if (item.proteinDM != null || item.caPRatio != null) ...[
-              const SizedBox(height: 12),
-              _DetailSection(title: s.foodNutritionDM, rows: [
-                if (item.proteinDM != null) _NutRow('${s.foodProtein} DM', '${item.proteinDM!.toStringAsFixed(1)}%'),
-                if (item.fatDM != null) _NutRow('${s.foodFat} DM', '${item.fatDM!.toStringAsFixed(1)}%'),
-                if (item.carbsDM != null) _NutRow('${s.foodCarbs} DM', '${item.carbsDM!.toStringAsFixed(1)}%'),
-                if (item.caPRatio != null) _NutRow(s.foodCaP, item.caPRatio!.toStringAsFixed(2)),
-              ]),
-            ],
-            if (item.note != null && item.note!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(s.foodNote, style: theme.textTheme.labelMedium),
-              const SizedBox(height: 4),
-              Text(item.note!, style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DetailSection extends StatelessWidget {
-  final String title;
-  final List<_NutRow> rows;
-  const _DetailSection({required this.title, required this.rows});
-
-  @override
-  Widget build(BuildContext context) {
-    if (rows.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return FormPage(
+      title: item.name,
       children: [
-        Text(title,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Column(children: rows),
-        ),
+        FormSection(title: s.foodNutritionRaw, children: [
+          if (item.caloriesPer100g != null) _NutTile(s.foodCalories, '${item.caloriesPer100g!.toStringAsFixed(0)} kcal'),
+          if (item.moisture != null) _NutTile(s.foodMoisture, '${item.moisture!.toStringAsFixed(1)}%'),
+          if (item.protein != null) _NutTile(s.foodProtein, '${item.protein!.toStringAsFixed(1)}%'),
+          if (item.fat != null) _NutTile(s.foodFat, '${item.fat!.toStringAsFixed(1)}%'),
+          if (item.carbs != null) _NutTile(s.foodCarbs, '${item.carbs!.toStringAsFixed(1)}%'),
+        ]),
+        if (item.proteinDM != null || item.caPRatio != null)
+          FormSection(title: s.foodNutritionDM, children: [
+            if (item.proteinDM != null) _NutTile('${s.foodProtein} DM', '${item.proteinDM!.toStringAsFixed(1)}%'),
+            if (item.fatDM != null) _NutTile('${s.foodFat} DM', '${item.fatDM!.toStringAsFixed(1)}%'),
+            if (item.carbsDM != null) _NutTile('${s.foodCarbs} DM', '${item.carbsDM!.toStringAsFixed(1)}%'),
+            if (item.caPRatio != null) _NutTile(s.foodCaP, item.caPRatio!.toStringAsFixed(2)),
+          ]),
+        if (item.note != null && item.note!.isNotEmpty)
+          FormSection(title: s.foodNote, children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: Text(item.note!, style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
+            ),
+          ]),
       ],
     );
   }
 }
 
-class _NutRow extends StatelessWidget {
+class _NutTile extends StatelessWidget {
   final String label;
   final String value;
-  const _NutRow(this.label, this.value);
+  const _NutTile(this.label, this.value);
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(children: [
-        Expanded(
-          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-        ),
-        Text(value,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
       ]),
     );
   }
 }
 
-// ── 新增食物 bottom sheet ─────────────────────────────────────────
-class _AddWetFoodSheet extends StatefulWidget {
+// ══════════════════════════════════════════════════════════════════
+// 新增罐頭表單頁（push route）
+// ══════════════════════════════════════════════════════════════════
+class WetFoodFormPage extends StatefulWidget {
   final AppStrings s;
-  final void Function(WetFoodItem) onSave;
-  const _AddWetFoodSheet({required this.s, required this.onSave});
+  const WetFoodFormPage({super.key, required this.s});
 
   @override
-  State<_AddWetFoodSheet> createState() => _AddWetFoodSheetState();
+  State<WetFoodFormPage> createState() => _WetFoodFormPageState();
 }
 
-class _AddWetFoodSheetState extends State<_AddWetFoodSheet> {
+class _WetFoodFormPageState extends State<WetFoodFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _brandCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
@@ -333,12 +242,13 @@ class _AddWetFoodSheetState extends State<_AddWetFoodSheet> {
   final _calCtrl = TextEditingController();
   final _caCtrl = TextEditingController();
   final _pCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
   String _preference = 'neutral';
 
   @override
   void dispose() {
     for (final c in [_brandCtrl, _nameCtrl, _flavorCtrl, _moistureCtrl,
-      _proteinCtrl, _fatCtrl, _carbsCtrl, _calCtrl, _caCtrl, _pCtrl]) {
+      _proteinCtrl, _fatCtrl, _carbsCtrl, _calCtrl, _caCtrl, _pCtrl, _noteCtrl]) {
       c.dispose();
     }
     super.dispose();
@@ -346,7 +256,7 @@ class _AddWetFoodSheetState extends State<_AddWetFoodSheet> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    widget.onSave(WetFoodItem(
+    Navigator.pop(context, WetFoodItem(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       brand: _brandCtrl.text.trim(),
       name: _nameCtrl.text.trim(),
@@ -359,170 +269,74 @@ class _AddWetFoodSheetState extends State<_AddWetFoodSheet> {
       phosphorus: double.tryParse(_pCtrl.text),
       caloriesPer100g: double.tryParse(_calCtrl.text),
       preference: _preference,
+      note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
     ));
-    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final s = widget.s;
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+    return FormPage(
+      title: s.foodAddWet,
+      bottomButton: FormSaveButton(label: s.actionSave, onTap: _submit),
+      children: [
+        Form(
+          key: _formKey,
+          child: Column(children: [
+            // 基本資訊
+            FormSection(children: [
+              FormFieldRow(label: s.foodBrand, controller: _brandCtrl),
+              FormFieldRow(
+                label: s.foodName, controller: _nameCtrl, required: true,
+                validator: (v) => (v == null || v.trim().isEmpty) ? s.fieldRequired : null,
+              ),
+              FormFieldRow(label: s.foodFlavor, controller: _flavorCtrl),
+            ]),
+            // 營養成分
+            FormSection(title: s.foodNutritionRaw, children: [
+              _NumRow(ctrl: _moistureCtrl, label: '${s.foodMoisture} (%)'),
+              _NumRow(ctrl: _calCtrl, label: 'kcal / 100g'),
+              _NumRow(ctrl: _proteinCtrl, label: '${s.foodProtein} (%)'),
+              _NumRow(ctrl: _fatCtrl, label: '${s.foodFat} (%)'),
+              _NumRow(ctrl: _carbsCtrl, label: '${s.foodCarbs} (%)'),
+              _NumRow(ctrl: _caCtrl, label: '鈣 Ca (%)'),
+              _NumRow(ctrl: _pCtrl, label: '磷 P (%)'),
+            ]),
+            // 偏好
+            FormSection(title: s.foodPreference, children: [
+              FormChoiceRow(
+                options: const ['love', 'like', 'neutral', 'dislike'],
+                labels: [s.prefLove, s.prefLike, s.prefNeutral, s.prefDislike],
+                selected: _preference,
+                colors: const [
+                  Color(0xFFE57373), Color(0xFF81C784),
+                  Color(0xFFFFB74D), Color(0xFF90A4AE),
+                ],
+                onChanged: (v) => setState(() => _preference = v),
+              ),
+            ]),
+            // 備註
+            FormSection(children: [
+              FormFieldRow(label: s.foodNote, controller: _noteCtrl, maxLines: 2),
+            ]),
+          ]),
         ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40, height: 4,
-                    decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(2)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(s.foodAddWet,
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                _TF(ctrl: _brandCtrl, label: s.foodBrand),
-                const SizedBox(height: 10),
-                _TF(ctrl: _nameCtrl, label: s.foodName, required: true,
-                    validator: (v) => (v == null || v.trim().isEmpty) ? s.fieldRequired : null),
-                const SizedBox(height: 10),
-                _TF(ctrl: _flavorCtrl, label: s.foodFlavor),
-                const SizedBox(height: 12),
-                Text(s.foodNutritionRaw,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: _TF(ctrl: _moistureCtrl, label: '${s.foodMoisture} %', numeric: true)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _TF(ctrl: _calCtrl, label: 'kcal/100g', numeric: true)),
-                ]),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: _TF(ctrl: _proteinCtrl, label: '${s.foodProtein} %', numeric: true)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _TF(ctrl: _fatCtrl, label: '${s.foodFat} %', numeric: true)),
-                ]),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: _TF(ctrl: _carbsCtrl, label: '${s.foodCarbs} %', numeric: true)),
-                  const SizedBox(width: 8),
-                  const Expanded(child: SizedBox()),
-                ]),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: _TF(ctrl: _caCtrl, label: '鈣 Ca %', numeric: true)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _TF(ctrl: _pCtrl, label: '磷 P %', numeric: true)),
-                ]),
-                const SizedBox(height: 12),
-                // 偏好
-                Text(s.foodPreference,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                _PrefSelector(
-                  value: _preference,
-                  s: s,
-                  onChanged: (v) => setState(() => _preference = v),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(onPressed: _submit, child: Text(s.actionSave)),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      ],
     );
   }
 }
 
-class _TF extends StatelessWidget {
+class _NumRow extends StatelessWidget {
   final TextEditingController ctrl;
   final String label;
-  final bool required;
-  final bool numeric;
-  final String? Function(String?)? validator;
-  const _TF({
-    required this.ctrl, required this.label,
-    this.required = false, this.numeric = false, this.validator,
-  });
+  const _NumRow({required this.ctrl, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    return FormFieldRow(
       controller: ctrl,
-      keyboardType: numeric ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: required ? '$label *' : label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        isDense: true,
-      ),
-    );
-  }
-}
-
-class _PrefSelector extends StatelessWidget {
-  final String value;
-  final AppStrings s;
-  final void Function(String) onChanged;
-  const _PrefSelector({required this.value, required this.s, required this.onChanged});
-
-  static const _prefs = ['love', 'like', 'neutral', 'dislike'];
-  static const _colors = {
-    'love': Color(0xFFE57373),
-    'like': Color(0xFF81C784),
-    'neutral': Color(0xFFFFB74D),
-    'dislike': Color(0xFF90A4AE),
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final labels = [s.prefLove, s.prefLike, s.prefNeutral, s.prefDislike];
-    return Row(
-      children: List.generate(_prefs.length, (i) {
-        final p = _prefs[i];
-        final color = _colors[p]!;
-        final selected = value == p;
-        return Expanded(
-          child: GestureDetector(
-            onTap: () => onChanged(p),
-            child: Container(
-              margin: EdgeInsets.only(right: i < _prefs.length - 1 ? 6 : 0),
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                color: selected ? color.withOpacity(0.18) : Theme.of(context).colorScheme.surface,
-                border: Border.all(color: selected ? color : Colors.transparent, width: 1.5),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: Text(labels[i],
-                  style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600,
-                      color: selected ? color : Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
-            ),
-          ),
-        );
-      }),
+      label: label,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
     );
   }
 }
@@ -537,12 +351,8 @@ class _PrefBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label,
-          style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500)),
+      decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+      child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500)),
     );
   }
 }

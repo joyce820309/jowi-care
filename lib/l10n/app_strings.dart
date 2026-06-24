@@ -54,6 +54,26 @@ class AppStrings {
   String get blacklistReason => _isChinese ? '不合格原因' : 'Reason';
   String get blacklistDeleteConfirm =>
       _isChinese ? '確定要刪除這筆黑名單嗎？' : 'Delete this blacklist item?';
+  String get blacklistSourceVendor =>
+      _isChinese ? '黑心廠商' : 'Bad Vendor';
+  String get blacklistSourceDislike =>
+      _isChinese ? '不喜歡品項' : 'Disliked Item';
+  String blacklistDislikedBy(String names) =>
+      _isChinese ? '不喜歡：$names' : 'Disliked by: $names';
+  String get blacklistDislikeEditConfirm =>
+      _isChinese ? '這會同步更新該品項所有不喜歡紀錄的名稱/備註，確定要編輯嗎？' : 'This will update the name/note for all dislike records of this item. Continue?';
+  String get blacklistDislikeDeleteConfirm =>
+      _isChinese ? '這會刪除該品項所有貓咪的不喜歡紀錄，確定要刪除嗎？' : 'This will delete all dislike records for this item. Continue?';
+  String get blacklistDeleteScopeHint =>
+      _isChinese ? '可選擇刪除全部，或只刪某一隻貓咪。' : 'You can delete all, or only one cat.';
+  String get blacklistDeleteAllCats =>
+      _isChinese ? '刪除全部貓咪' : 'Delete All Cats';
+  String get blacklistDeleteOneCat =>
+      _isChinese ? '只刪一隻貓咪' : 'Delete One Cat';
+  String blacklistDeleteOnlyCat(String catName) =>
+      _isChinese ? '只刪 $catName' : 'Delete Only $catName';
+  String blacklistDeleteOnlyCatConfirm(String catName) =>
+      _isChinese ? '確定只刪除 $catName 對這個品項的不喜歡紀錄嗎？' : 'Delete only $catName\'s dislike for this item?';
 
   // Form validation
   String get fieldRequired => _isChinese ? '此欄位為必填' : 'This field is required';
